@@ -1118,10 +1118,14 @@ setTimeout(() => {
                 const javakMap = {};
 
                 aavakRecords.forEach(rec => {
+                    // 🔥 FIX: Bank jama internal transfer exclude karo
+                    if (rec.category === "બેંક જમા") return;
                     const cat = customCategories?.[rec.category] || rec.category;
                     aavakMap[cat] = (aavakMap[cat] || 0) + Number(rec.amount || 0);
                 });
                 javakRecords.forEach(rec => {
+                    // 🔥 FIX: Bank jama internal transfer exclude karo
+                    if (rec.category === "બેંક જમા") return;
                     const cat = customCategories?.[rec.category] || rec.category;
                     javakMap[cat] = (javakMap[cat] || 0) + Number(rec.amount || 0);
                 });
@@ -1232,6 +1236,8 @@ setTimeout(() => {
             const records = allRecords.filter(r => {
                 if (r.vyavharType !== report.type) return false;
                 if (report.type === "javak" && r.category === "બેંક જમા") return false;
+                // 🔥 FIX: Aavak report mein bhi bank jama entry exclude karo
+                if (report.type === "aavak" && r.category === "બેંક જમા") return false;
                 // 🔥 Custom mode: strictly filter by date range
                 if (isCustomMode) {
                     if (!r.date) return false;
