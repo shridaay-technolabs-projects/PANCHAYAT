@@ -1,4 +1,5 @@
 import express from "express";
+import auth from "../middleware/auth.js";
 import {
   createBank,
   getBanks,
@@ -8,9 +9,9 @@ import {
 
 const router = express.Router();
 
-router.get("/", getBanks);
-router.post("/", createBank);
-router.put("/:id", updateBank);
-router.delete("/:id", softDeleteBank);
+router.get("/", auth, getBanks);
+router.post("/", auth, createBank);
+router.put("/:id", auth, updateBank);
+router.delete("/:id", auth, softDeleteBank);
 
 export default router;

@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const schema = new mongoose.Schema({
   panchayatId: { type: String },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   date: String, // ISO date
   name: String,
   receiptPaymentNo: String,

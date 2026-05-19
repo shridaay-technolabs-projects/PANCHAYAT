@@ -6,14 +6,27 @@ import path from "path";
 import { fileURLToPath } from "url";
 import puppeteer from "puppeteer";
 
+const buildCashMelOwnerQuery = (req) => {
+  if (req.user.role === 'admin') return {};
+  return {
+    $or: [
+      { createdBy: req.user._id },
+      { createdBy: { $exists: false }, panchayatId: req.user.gam },
+      { createdBy: null, panchayatId: req.user.gam }
+    ]
+  };
+};
+
 export const createEntry = async (req, res, next) => {
   try {
     
     const { date, name, receiptPaymentNo, vyavharType, category, amount, paymentMethod, bank, ddCheckNum, remarks } = req.body;
     const panchayatId = req.user.gam;
+    const createdBy = req.user._id;
 
     const entry = await CashMel.create({
       panchayatId,
+      createdBy,
       date,
       name,
       receiptPaymentNo,
@@ -37,10 +50,7 @@ export const getEntry = async (req, res, next) => {
   try {
     const id = req.params.id;
     if (!id) return res.status(400).json({ success: false, message: 'Missing id' });
-    let query = { _id: id, isDeleted: false };
-    if (req.user.role !== 'admin') {
-      query.panchayatId = req.user.gam;
-    }
+    let query = { _id: id, isDeleted: false, ...buildCashMelOwnerQuery(req) };
     const entry = await CashMel.findOne(query).lean();
     if (!entry) return res.status(404).json({ success: false, message: 'Not found' });
     return res.json({ success: true, data: entry });
@@ -55,10 +65,7 @@ export const getEntry = async (req, res, next) => {
 // Get all entries
 export const getAllEntries = async (req, res, next) => {
   try {
-    let query = { isDeleted: false };
-    if (req.user.role !== 'admin') {
-      query.panchayatId = req.user.gam;
-    }
+    let query = { isDeleted: false, ...buildCashMelOwnerQuery(req) };
     // Support filtering by category
     if (req.query.category) {
       query.category = req.query.category;
@@ -77,20 +84,14 @@ export const updateEntry = async (req, res, next) => {
     const { date, name, receiptPaymentNo, vyavharType, category, amount, paymentMethod, bank, ddCheckNum, remarks } = req.body;
     
     // Get the current entry to check if it's a bank deposit
-    let getQuery = { _id: id, isDeleted: false };
-    if (req.user.role !== 'admin') {
-      getQuery.panchayatId = req.user.gam;
-    }
+    let getQuery = { _id: id, isDeleted: false, ...buildCashMelOwnerQuery(req) };
     const currentEntry = await CashMel.findOne(getQuery).lean();
     if (!currentEntry) return res.status(404).json({ success: false, message: 'Not found' });
 
     const update = { date, name, receiptPaymentNo, vyavharType, category, paymentMethod, bank, ddCheckNum, remarks };
     if (typeof amount !== 'undefined') update.amount = Number(amount);
 
-    let query = { _id: id, isDeleted: false };
-    if (req.user.role !== 'admin') {
-      query.panchayatId = req.user.gam;
-    }
+    let query = { _id: id, isDeleted: false, ...buildCashMelOwnerQuery(req) };
     
     const updated = await CashMel.findOneAndUpdate(query, update, { new: true }).lean();
     if (!updated) return res.status(404).json({ success: false, message: 'Not found' });
@@ -113,6 +114,14 @@ export const updateEntry = async (req, res, next) => {
         isDeleted: false,
         _id: { $ne: id } // Exclude current entry
       };
+      if (currentEntry.createdBy) {
+        pairQuery.createdBy = currentEntry.createdBy;
+      } else {
+        pairQuery.$or = [
+          { createdBy: { $exists: false } },
+          { createdBy: null }
+        ];
+      }
 
       // Prepare paired update (mirror the changes)
       const pairedUpdate = {};
@@ -1249,6 +1258,7 @@ function parseExcelDate(val) {
     // Fetch existing entries in one query to avoid N+1 database calls
     const existingDocs = await CashMel.find({
       panchayatId: req.user.gam,
+      createdBy: req.user._id,
       isDeleted: false,
       date: { $in: uniqueDates },
     })
@@ -1275,6 +1285,7 @@ function parseExcelDate(val) {
 
       toInsert.push({
         panchayatId: req.user.gam,
+        createdBy: req.user._id,
         date: entry.date,
         name: entry.name,
         receiptPaymentNo: entry.receiptPaymentNo,
@@ -1336,7 +1347,10 @@ function parseExcelDate(val) {
 export const generatePDFReport = async (req, res, next) => {
   try {
     const { type, from, to } = req.query;
-    const q = { isDeleted: false, panchayatId: req.user.gam };
+    const q = { isDeleted: false };
+    if (req.user.role !== 'admin') {
+      q.createdBy = req.user._id;
+    }
     if (type) q.vyavharType = type;
     if (from) q.date = { $gte: from };
     if (to) q.date = q.date ? { ...q.date, $lte: to } : { $lte: to };
@@ -1391,7 +1405,7 @@ export const getReport = async (req, res, next) => {
   try {
     const { type, from, to } = req.query;
     // naive filter by date string inclusion or ISO comparison if provided
-    const q = { isDeleted: false, panchayatId: req.user.gam };
+    const q = { isDeleted: false, ...buildCashMelOwnerQuery(req) };
     if (type) q.vyavharType = type;
     if (from) q.date = { $gte: from };
     if (to) q.date = q.date ? { ...q.date, $lte: to } : { $lte: to };
@@ -1412,10 +1426,7 @@ export const softDeleteCashMel = async (req, res) => {
   try {
     const { id } = req.params;
 
-    let query = { _id: id };
-    if (req.user.role !== 'admin') {
-      query.panchayatId = req.user.gam;
-    }
+    let query = { _id: id, ...buildCashMelOwnerQuery(req) };
     const entry = await CashMel.findOneAndUpdate(query, { isDeleted: true });
 
     if (!entry) return res.status(404).json({ success: false, message: 'Not found' });
@@ -1444,10 +1455,7 @@ export const deleteByDate = async (req, res) => {
       });
     }
 
-    let query = { date, isDeleted: false };
-    if (req.user.role !== 'admin') {
-      query.panchayatId = req.user.gam;
-    }
+    let query = { date, isDeleted: false, ...buildCashMelOwnerQuery(req) };
 
     const result = await CashMel.updateMany(query, { isDeleted: true });
 
@@ -1472,10 +1480,7 @@ export const deleteMultipleCashMel = async (req, res) => {
       return res.status(400).json({ success: false, message: "ids array is required" });
     }
 
-    let query = { _id: { $in: ids }, isDeleted: false };
-    if (req.user.role !== 'admin') {
-      query.panchayatId = req.user.gam;
-    }
+    let query = { _id: { $in: ids }, isDeleted: false, ...buildCashMelOwnerQuery(req) };
 
     const result = await CashMel.updateMany(query, { isDeleted: true });
 
@@ -1495,10 +1500,7 @@ export const deleteMultipleCashMel = async (req, res) => {
 // ============================================================
 export const deleteAllCashMel = async (req, res) => {
   try {
-    let query = { isDeleted: false };
-    if (req.user.role !== 'admin') {
-      query.panchayatId = req.user.gam;
-    }
+    let query = { isDeleted: false, ...buildCashMelOwnerQuery(req) };
 
     const result = await CashMel.updateMany(query, { isDeleted: true });
 
