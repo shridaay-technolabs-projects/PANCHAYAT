@@ -320,10 +320,11 @@ export default function Topbar() {
         //   ? {}
         //   : { _id: { $in: user?.villageAccess || [] } },
         {
-          taluka,
-          ...(user?.role?.name === "Super Admin"
-            ? {}
-            : { _id: { $in: user?.villageAccess || [] } }),
+          taluka
+          // ,
+          // ...(user?.role?.name === "Super Admin"
+          //   ? {}
+          //   : { _id: { $in: user?.villageAccess || [] } }),
         },
         1
       );
