@@ -17,6 +17,33 @@ const buildCashMelOwnerQuery = (req) => {
   };
 };
 
+const sortCashMelRows = (rows = [], order = "asc") => {
+  const toNumericValue = (value) => {
+    const cleaned = String(value ?? "").trim().replace(/[^0-9.-]/g, "");
+    const numeric = Number(cleaned);
+    return Number.isFinite(numeric) ? numeric : Number.POSITIVE_INFINITY;
+  };
+
+  return [...rows].sort((a, b) => {
+    const dateA = a?.date ? new Date(a.date).getTime() : 0;
+    const dateB = b?.date ? new Date(b.date).getTime() : 0;
+    const dateCompare = order === "desc" ? dateB - dateA : dateA - dateB;
+
+    if (dateCompare !== 0) return dateCompare;
+
+    const voucherCompare = toNumericValue(a?.receiptPaymentNo) - toNumericValue(b?.receiptPaymentNo);
+    if (voucherCompare !== 0) return voucherCompare;
+
+    const textCompare = String(a?.receiptPaymentNo ?? "").localeCompare(String(b?.receiptPaymentNo ?? ""), undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+    if (textCompare !== 0) return textCompare;
+
+    return new Date(a?.createdAt || 0).getTime() - new Date(b?.createdAt || 0).getTime();
+  });
+};
+
 export const createEntry = async (req, res, next) => {
   try {
     
@@ -70,8 +97,8 @@ export const getAllEntries = async (req, res, next) => {
     if (req.query.category) {
       query.category = req.query.category;
     }
-    const entries = await CashMel.find(query).sort({ date: -1 }).lean();
-    return res.json({ success: true, data: entries });
+    const entries = await CashMel.find(query).sort({ date: -1, createdAt: -1 }).lean();
+    return res.json({ success: true, data: sortCashMelRows(entries, "desc") });
   } catch (err) {
     next(err);
   }
@@ -1410,10 +1437,10 @@ export const getReport = async (req, res, next) => {
     if (from) q.date = { $gte: from };
     if (to) q.date = q.date ? { ...q.date, $lte: to } : { $lte: to };
 
-    const rows = await CashMel.find(q).sort({ date: 1 }).lean();
+    const rows = await CashMel.find(q).sort({ date: 1, createdAt: 1 }).lean();
 
     // if client expects JSON preview, return rows
-    return res.json({ success: true, rows });
+    return res.json({ success: true, rows: sortCashMelRows(rows, "asc") });
   } catch (err) {
     next(err);
   }
