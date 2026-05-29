@@ -28,15 +28,15 @@ export const VillageProvider = ({ children }) => {
     localStorage.setItem("district", newDistrict);
     localStorage.setItem("districtName", newDistrictName);
 
-    setVillage(null);
-    setVillageName(null);
-    localStorage.setItem("village", null);
-    localStorage.setItem("villageName", null);
+    setVillage("");
+    setVillageName("");
+    localStorage.setItem("village", "");
+    localStorage.setItem("villageName", "");
 
-    setTaluka(null);
-    setTalukaName(null);
-    localStorage.setItem("taluka", null);
-    localStorage.setItem("talukaName", null);
+    setTaluka("");
+    setTalukaName("");
+    localStorage.setItem("taluka", "");
+    localStorage.setItem("talukaName", "");
   };
 
   const updateTaluka = (newTaluka, newTalukaName) => {
@@ -45,10 +45,10 @@ export const VillageProvider = ({ children }) => {
     localStorage.setItem("taluka", newTaluka);
     localStorage.setItem("talukaName", newTalukaName);
 
-    setVillage(null);
-    setVillageName(null);
-    localStorage.setItem("village", null);
-    localStorage.setItem("villageName", null);
+    setVillage("");
+    setVillageName("");
+    localStorage.setItem("village", "");
+    localStorage.setItem("villageName", "");
   };
 
   return (

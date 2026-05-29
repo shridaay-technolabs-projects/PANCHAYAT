@@ -567,12 +567,20 @@ exports.getMainReport = asyncHandler(async (req, res, next) => {
     { $match: { allTotals: { $gt: parsedTotal } } },
 
     // ✅ NUMERIC SORT: accountNo string → number, then sort ascending
+    // Use safe conversion so malformed accountNo values do not crash the aggregate.
     {
       $addFields: {
-        accountNoInt: { $toInt: "$accountNo" }  // string → number
-      }
+        accountNoInt: {
+          $convert: {
+            input: "$accountNo",
+            to: "int",
+            onError: 0,
+            onNull: 0,
+          },
+        },
+      },
     },
-    { $sort: { accountNoInt: 1 } },  // ✅ numeric sort: 149, 167, 429
+    { $sort: { accountNoInt: 1 } },
 
     // ── Final projection ──────────────────────────────────────────────────────
     {

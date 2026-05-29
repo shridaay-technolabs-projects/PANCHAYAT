@@ -277,9 +277,11 @@ export default function Topbar() {
     const fetchDistricts = async () => {
       try {
         const response = await fetchDistrictsPage(1, 1000, "", "", {}, 1);
-        setDistricts(response.data.data);
+        const list = response?.data?.data || response?.data || [];
+        setDistricts(list);
       } catch (error) {
         console.error("Error fetching districts:", error);
+        setDistricts([]);
       }
     };
 
@@ -297,9 +299,11 @@ export default function Topbar() {
           1,
           ""
         );
-        setTalukas(response.data.data);
+        const list = response?.data?.data || response?.data || [];
+        setTalukas(list);
       } catch (error) {
         console.error("Error fetching talukas:", error);
+        setTalukas([]);
       }
     };
     if (district) {
@@ -311,29 +315,41 @@ export default function Topbar() {
 
   useEffect(() => {
     const fetchVillages = async () => {
-      const response = await fetchVillagesPage(
-        1,
-        1000,
-        "",
-        "",
-        // user.role.name === "Super Admin"
-        //   ? {}
-        //   : { _id: { $in: user?.villageAccess || [] } },
-        {
-          taluka
-          // ,
-          // ...(user?.role?.name === "Super Admin"
+      try {
+        const response = await fetchVillagesPage(
+          1,
+          1000,
+          "",
+          "",
+          // user.role.name === "Super Admin"
           //   ? {}
-          //   : { _id: { $in: user?.villageAccess || [] } }),
-        },
-        1
-      );
-      setVillages(response.data.data);
+          //   : { _id: { $in: user?.villageAccess || [] } },
+          {
+            taluka,
+            // ,
+            // ...(user?.role?.name === "Super Admin"
+            //   ? {}
+            //   : { _id: { $in: user?.villageAccess || [] } }),
+          },
+          1
+        );
+        const list = response?.data?.data || response?.data || [];
+        setVillages(list);
+      } catch (error) {
+        console.error("Error fetching villages:", error);
+        setVillages([]);
+      }
     };
 
     const fetchFinancialYears = async () => {
-      const response = await fetchFinancialYearsPage();
-      setFinancialYears(response.data.data);
+      try {
+        const response = await fetchFinancialYearsPage();
+        const list = response?.data?.data || response?.data || [];
+        setFinancialYears(list);
+      } catch (error) {
+        console.error("Error fetching financial years:", error);
+        setFinancialYears([]);
+      }
     };
 
     if (user && user._id) {
@@ -344,7 +360,7 @@ export default function Topbar() {
       }
       fetchFinancialYears();
     }
-  }, [user?._id, taluka]);
+  }, [user, taluka]);
 
   const closeModal = () => {
     setOpenModal(false);
